@@ -1,0 +1,8 @@
+README.md
+setup.py
+src/barkion.py
+src/barkion.egg-info/PKG-INFO
+src/barkion.egg-info/SOURCES.txt
+src/barkion.egg-info/dependency_links.txt
+src/barkion.egg-info/requires.txt
+src/barkion.egg-info/top_level.txt

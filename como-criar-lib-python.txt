@@ -1,0 +1,129 @@
+link: https://code.tutsplus.com/pt/tutorials/how-to-write-package-and-distribute-a-library-in-python--cms-28693
+https://towardsdatascience.com/how-to-upload-your-python-package-to-pypi-de1b363a1b3
+
+Passos:
+1. Ter arquivo python de código/classe funcionando
+2. Criar arquivo `setup.py` na raiz do projeto com o código semelahnte ao msotrado a seguir
+
+`````python
+from setuptools import setup, find_packages
+ 
+setup(name='pathology',
+      version='0.1',
+      url='https://github.com/the-gigi/pathology',
+      license='MIT',
+      author='Gigi Sayfan',
+      author_email='the.gigi@gmail.com',
+      description='Add static script_dir() method to Path',
+      packages=find_packages(exclude=['tests']),
+      long_description=open('README.md').read(),
+      zip_safe=False)
+````
+
+**3. Criar código de distribuição e binário : **
+**LEMBRE DE MDUAR A VERSAO**
+````
+python setup.py sdist bdist_wheel
+````
+
+4. Instalar pacote na máquina local
+````
+pip install -e .
+````
+
+### Caso for a 1 vez que vai Fazer um upload
+
+Se essa é a primeira versão do seu pacote, você precisa registrá-lo
+ dentro do PyPI. Use o comando de registro do setup.py. Ele vai pedir
+  por sua senha. Note que eu o apontei para o repositório de teste aqui:
+
+````
+$ python setup.py register -r pypitest
+````
+
+
+### Test Pypi
+
+https://packaging.python.org/en/latest/guides/using-testpypi/
+
+4. Antes de mandar para o Pip você pode testar novas versões em um outro lugar.
++ Em textPip você pode mandar e testar sem alterar a versão original do pip
++ link: https://test.pypi.org/manage/projects/
+
+Na raiz chame faça o upload executando o codigo a seguir
+
+````
+twine upload --repository testpypi dist/*
+````
+
+ou use
+
+````
+twine upload --repository-url https://test.pypi.org/legacy/ dist/* 
+````
+
+Ele vai perguntar seu usernmame do TestPypi
+
+Chamadno do test ao invez do pip Oficial
+py -m pip install --index-url https://test.pypi.org/simple/ your-package
+
+
+No window, o gitbash esta travando, ele pede user mas nao pede pass, entao use o power shell
+
+No power sheel as vezes da esse erro
+
+https://exerror.com/caused-by-sslerrorcant-connect-to-https-url-because-the-ssl-module-is-not-available/
+
+
+
+### Upload no Pyp Oficial
+
+python -m twine upload dist/*
+
+
+
+
+4. Passos para inserir no PyPi (pip)
++ Criar uma conta no PyPI (somente uma).
++ Registrar seu pacote.
++ Fazer o upload do seu pacote.
+
+
+#
+## Testar a lib
+
+# Como usar
+
+Instalar com pip
++ Use `!` se estiver no colba/kaggle
+````
+!pip install ds-my-snippets
+````
+
+Chamando
+````
+import ds_my_snippets as ds
+````
+
+Trecho que funciona
+
+````
+import pandas as pd
+import seaborn as sns
+import barkion as bk
+
+iris = sns.load_dataset('iris')
+iris = bk.reduce_mem_usage(iris)
+````
+
+Chamando todas as funções
+````
+dir(ds) # lista todas as funçôes do módulo
+````
+
+Instalar procima VERSAO
+
+!pip install barkion==1.0.1
+
+
+demora umpouco para subir e depois ver esa nova vesao, 1minutos +-
