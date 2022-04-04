@@ -118,7 +118,7 @@ iris = bk.reduce_mem_usage(iris)
 
 Chamando todas as funções
 ````
-dir(ds) # lista todas as funçôes do módulo
+dir(bk) # lista todas as funçôes do módulo
 ````
 
 Instalar procima VERSAO
