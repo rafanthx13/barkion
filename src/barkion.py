@@ -3,6 +3,8 @@ import pandas as pd
 import time
 import os
 import matplotlib.pyplot as plt
+import seaborn as sns
+from math import ceil
 
 ################################################
 
@@ -362,72 +364,131 @@ def eda_numerical_feat(series, title="", with_label=True, number_format="", show
 
 
 
-def describe_y_classify_by_cat_feat(mydf, x, y, title='', classify_content='survivors', labels=['Death', 'Survived']):
-	"""
-	# func(df, x='embarked', y='survived', title='survived by sex')
-	Generate one barplot with quantity and len(x.unique()) pie plots with percentage of x by class of y.unique()
-	@classify_content : string that is the meaning of y
-	@labels : start from 0, is the meanign of y value
-	"""
-	# Create DataSet
-	df1 = df.groupby([x,y]).count().reset_index()
-	a_column = df1.columns[2]
-	df1 = df1.rename({a_column: "quantity"}, axis=1)
-	alist = df1['quantity'].tolist()
-	unique_values_x = mydf[x].unique().tolist()
-	unique_values_x.sort()
-	len_unique_values_y = len(mydf[y].unique().tolist())
-	# Create Fig and Axes
-	f, ax = plt.subplots(ncols=len(unique_values_x)+1, figsize=(18, 5), sharex=False)
-	f.suptitle(title, fontsize=18)
-	# BarPlot
-	s = sns.barplot(x=x, y='quantity', hue=y, data=df1, ax=ax[0])
-	count, by_hue = 0, 0
-	for index, row in df1.iterrows():
-		axis_x = count - 0.20 if index % 2 == 0 else count + 0.20
-		by_hue += 1
-		if(by_hue == len_unique_values_y):
-			count += 1
-			by_hue = 0
-			# print(axis_x) ## DEBUG
-		s.text(axis_x, row['quantity'], '{:,d}'.format(int(row['quantity'])), color='black', ha="center")
-	# Query DF
-	hue_count = 0
-	for i in range(len(unique_values_x)):
-		df1.query('{} == "{}"'.format(x, unique_values_x[i])).plot.pie(y='quantity', figsize=(18, 5), autopct='%1.2f%%',
-									labels = ['{} = {}'.format(labels[0], str(alist[i+hue_count])),
-											  '{} = {}'.format(labels[1], str(alist[i+hue_count+1]))],
-									title='{} {} {} (Total = {})'.format(x, unique_values_x[i], classify_content ,str(alist[i] + alist[i+1])),
-									ax=ax[i+1], labeldistance=None)
-		hue_count += 1
-	plt.show()
-	# return df1 ## DEBUG
+def describe_y_classify_by_cat_feat(mydf, x, y, title='', 
+                                    classify_content='--', 
+                                    labels=['Death', 'Survived'],
+                                    vertical=False):
+    """
+    Generate one barplot with quantity and len(x.unique()) pie plots with percentage of x by class of y.unique()
+    @classify_content : string that is the meaning of y
+    @labels : start from 0, is the meanign of y value
+    18/04/2022: Fix bug de quanto nao tinha categoria alem 
+        de colcoar para modo vertical
+    """
+    
+    # Create DataSet
+    df1 = mydf.groupby([x,y]).count().reset_index()
+    a_column = df1.columns[2]
+    df1 = df1.rename({a_column: "quantity"}, axis=1)
+    
+    # pre-processing df1 to fix bugs
+    df1 = df1[ [x, y, 'quantity']]
+    all_possibilities = [ (x1,y1) 
+                         for x1 in df1[x].unique().tolist() 
+                         for y1 in df1[y].unique().tolist() 
+                        ]
+    count = -1
+    for xval, yval in all_possibilities:
+        if( not ((df1[x] == xval) & (df1[y] == yval) ).any()):
+            df1.loc[count] = [xval, yval, 0]
+            count -= 1
+    df1 = df1.sort_values([x,y]).reset_index(drop=True)
+    
+    # continue
+    alist = df1['quantity'].tolist()
+    unique_values_x = mydf[x].unique().tolist()
+    unique_values_x.sort()
+    len_unique_values_y = len(mydf[y].unique().tolist())
+    
+    # Create Fig and Axes and Bar Plot
+    if(vertical):
+        f, ax = plt.subplots(nrows=ceil((len(unique_values_x)+1)/2),
+                             ncols=2, figsize=(50, 50), sharex=False)
+        s = sns.barplot(x=x, y='quantity', hue=y, data=df1, ax=ax[0][0])
+    else:
+        f, ax = plt.subplots(ncols=len(unique_values_x)+1, figsize=(18, 5), sharex=False)
+        s = sns.barplot(x=x, y='quantity', hue=y, data=df1, ax=ax[0])
+    f.suptitle(title, fontsize=18)
+    
+    # write on barplot
+    count, by_hue = 0, 0
+    for index, row in df1.iterrows():
+        axis_x = count - 0.20 if index % 2 == 0 else count + 0.20
+        by_hue += 1
+        if(by_hue == len_unique_values_y):
+            count += 1
+            by_hue = 0
+        s.text(axis_x, row['quantity'], '{:,d}'.format(int(row['quantity'])),
+               color='black', ha="center")
+    
+    if(vertical):
+        row_counter, col_counter, hue_counter = 0, 1, 0
+        for i in range(len(unique_values_x)):
+            df1.query(' `{}` == "{}"'.format(x, unique_values_x[i])).plot.pie(
+                y='quantity', figsize=(18, 14), autopct='%1.2f%%',
+                labels = ['{} = {}'.format(labels[0], str(alist[i+hue_counter])),
+                          '{} = {}'.format(labels[1], str(alist[i+hue_counter+1]))],
+                title='{} {} {} (Total = {})'.format(
+                    x, unique_values_x[i], classify_content ,str(alist[i] + alist[i+1])),
+                ax=ax[row_counter][col_counter],
+                labeldistance=None, textprops={'fontsize': 14})
+            row_counter = row_counter + 1 if col_counter == 1 else row_counter
+            col_counter = col_counter + 1 if col_counter == 0 else 0
+            hue_counter += 1
+
+    else:
+        hue_count = 0
+        for i in range(len(unique_values_x)):
+            df1.query(' `{}` == "{}"'.format(x, unique_values_x[i])).plot.pie(
+                y='quantity', figsize=(18, 5), autopct='%1.2f%%',
+                labels = ['{} = {}'.format(labels[0], str(alist[i+hue_count])),
+                          '{} = {}'.format(labels[1], str(alist[i+hue_count+1]))],
+                title='{} {} {} (Total = {})'.format(
+                    x, unique_values_x[i], classify_content ,str(alist[i] + alist[i+1])),
+                ax=ax[i+1],
+                labeldistance=None, textprops={'fontsize': 14})
+            hue_count += 1
+    plt.show()
+#     return df1
+    
+# describe_y_classify_by_cat_feat(df_deputado_info,
+#     'Cor/Raça', 'eleito',title="cor-eleito",
+#     classify_content='de',labels=['Eleito', 'NaoEleito'],
+#     vertical=True)
+
 	
 
 def describe_y_classify_numeric_feature(mydf, x, y, title='', with_swarmp=False):
-	"""
-	func(df, x='fare', y='survived')
-	"""
-	f, (ax1, ax2, ax3) = plt.subplots(ncols=3, figsize=(18, 5), sharex=False)
-	# Box and Violin Plots
-	sns.boxplot(y=x, x=y, data=mydf, ax=ax1)
-	sns.violinplot(y=x, x=y, data=mydf, ax=ax2)
-	if(with_swarmp):
-		sns.swarmplot(x=y, y=x, data=mydf, ax=ax2, palette='rocket')
-	# HistogramPlot
-	y_unique_values = mydf[y].unique().tolist()
-	for u in y_unique_values:
-		adf = mydf.query("{} == {}".format(y, u))
-		sns.distplot(adf[x], ax=ax3)
-	# Set Titles
-	if(not title):
-		f.suptitle('{} by {}'.format(y,x), fontsize=18)
-	else:
-		f.suptitle(title, fontsize=18)
-	ax1.set_title("BoxPlot")
-	ax2.set_title("ViolinPlot")
-	ax3.set_title("HistogramPlot")
-	plt.show()
+    f, (ax1, ax2, ax3) = plt.subplots(ncols=3, figsize=(18, 7), sharex=False)
+    # Box and Violin Plots
+    sns.boxplot(y=x, x=y, data=mydf, ax=ax1)
+    sns.violinplot(y=x, x=y, data=mydf, ax=ax2)
+    if(with_swarmp):
+        sns.swarmplot(x=y, y=x, data=mydf, ax=ax2, palette='rocket')
+    # HistogramPlot
+    sns.histplot(mydf, x=x, kde=True, hue=y, ax=ax3)
+    # Set Titles
+    if(not title):
+        f.suptitle('{} by {}'.format(y,x), fontsize=24)
+    else:
+        f.suptitle(title, fontsize=24)
+    ax1.set_title("BoxPlot", fontsize=20)
+    ax2.set_title("ViolinPlot", fontsize=20)
+    ax3.set_title("HistogramPlot", fontsize=20)
+    # font-size of x and y label
+    ax1.set_xlabel(x, fontsize = 16)
+    ax1.set_ylabel(y, fontsize = 16)
+    ax2.set_xlabel(x, fontsize = 16)
+    ax2.set_ylabel(y, fontsize = 16)
+    ax3.set_xlabel(x, fontsize = 16)
+    ax3.set_ylabel('Count', fontsize = 16)
+    # size font of axis
+    ax1.tick_params(labelsize=14)
+    ax2.tick_params(labelsize=14)
+    ax3.tick_params(labelsize=14)
+    plt.show()
+    
+# describe_y_classify_numeric_feature(df, x='fare', y='survived')
 	
 def plot_top_rank_correlation(my_df, column_target):
 	corr_matrix = my_df.corr()
@@ -834,3 +895,40 @@ def g_value_counts_perc_str(series):
     astr = astr[:-2]
     astr += ']'
     return astr
+
+def df_describe_y_class_binary_by_cat_feats(adf, x_column, y, positive_y):
+    """
+    Cria DataFrame supremo que mostra a relaçâod e valores categoricos de 
+    uma feat ou mais para com um atributo classificado binario
+    ==> x_column pode ser tanto LIST QUANTO UM UNICO ATRIBUTO
+    """
+    mydf = adf[x_column].value_counts()
+    mydf = pd.concat((mydf,
+                      adf[x_column].value_counts(normalize=True),
+                      adf[adf[y] == positive_y][x_column].value_counts()),
+                      axis=1)
+    mydf = mydf.fillna(0.0)
+    mydf = mydf.set_axis(
+        ['qtd_total', 'percentage_total', 'qtd_yes'], axis='columns')
+    def divide_cols(row):
+        if(row['qtd_yes'] == 0.0):
+            return 0.0
+        return row['qtd_yes'] / row['qtd_total']
+    mydf['qtd_no'] = mydf.apply(
+        lambda row: row['qtd_total'] - int(row['qtd_yes']), axis=1)
+    mydf['percentage_val_yes'] = mydf.apply(
+        lambda row: divide_cols(row), axis=1)
+    mydf['percentage_val_no'] = mydf.apply(
+        lambda row: 1.0 - row['percentage_val_yes'], axis=1)
+    mydf = mydf.sort_values(by='percentage_val_yes', ascending=False)
+    # convert types
+    for c in ['qtd_yes','qtd_no']:
+        mydf[c] = mydf[c].apply(int)
+    for c in ['percentage_total','percentage_val_yes','percentage_val_no']:
+        mydf[c] = mydf[c].apply(lambda x: '{:.2%}'.format(x))
+    if isinstance(x_column, list):
+        return mydf.reset_index()
+    else:
+        return mydf.reset_index().rename(
+            columns={ 'index': x_column})
+# df_describe_y_class_binary_by_cat_feats(df, 'SUB-ORIGEM', 'VENDIDO', 'SIM')
